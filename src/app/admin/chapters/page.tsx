@@ -99,9 +99,8 @@ export default function ChaptersPage() {
                           {chapter.name}
                         </Link>
                       </TableCell>
-                      <TableCell>{chapter.city || "-"}</TableCell>
+                      <TableCell>{chapter.city ?? "-"}</TableCell>
                       <TableCell className="text-center">
-                        {/* @ts-expect-error _count is added by the include */}
                         {chapter._count?.events ?? 0}
                       </TableCell>
                       <TableCell className="text-center">
