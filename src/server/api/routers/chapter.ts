@@ -112,10 +112,38 @@ export const chapterRouter = createTRPCRouter({
       orderBy: { name: "asc" },
     });
 
-    let totalEvents = 0;
+    // Get orphan events (events without a chapter)
+    const orphanEvents = await db.event.findMany({
+      where: { chapterId: null },
+      include: {
+        _count: {
+          select: {
+            attendees: true,
+            votes: true,
+            feedback: true,
+          },
+        },
+      },
+    });
+
+    let totalEvents = orphanEvents.length;
     let eventsLast30Days = 0;
     let attendeesLast30Days = 0;
     let votesLast30Days = 0;
+
+    // Count orphan events in last 30 days
+    const recentOrphanEvents = orphanEvents.filter(
+      (event) => event.date >= thirtyDaysAgo,
+    );
+    eventsLast30Days += recentOrphanEvents.length;
+    attendeesLast30Days += recentOrphanEvents.reduce(
+      (sum, event) => sum + event._count.attendees,
+      0,
+    );
+    votesLast30Days += recentOrphanEvents.reduce(
+      (sum, event) => sum + event._count.votes,
+      0,
+    );
 
     const chapterStats = chapters.map((chapter) => {
       const chapterEvents = chapter.events;

@@ -21,7 +21,7 @@ export function AdminHeader() {
           className="flex items-center gap-1 transition-opacity hover:opacity-80"
         >
           <Logos size={36} logoPath={branding.logoPath} />
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-col justify-center">
             <h1 className="line-clamp-1 font-marker text-xl font-bold leading-6 tracking-tight">
               {branding.appName} App
             </h1>
