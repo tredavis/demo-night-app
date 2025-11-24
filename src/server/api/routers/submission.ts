@@ -5,6 +5,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { sendSubmissionConfirmation, sendSubmissionStatusUpdate } from "~/lib/email";
 import { db } from "~/server/db";
 
 const submissionStatus = z.enum([
@@ -31,10 +32,30 @@ export const submissionRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
+      const event = await db.event.findUnique({
+        where: { id: input.eventId },
+        select: { id: true, name: true, url: true },
+      });
+      if (!event) {
+        throw new Error("Event not found");
+      }
       try {
         const result = await db.submission.create({
           data: input,
         });
+
+        void sendSubmissionConfirmation({
+          submission: {
+            id: result.id,
+            name: result.name,
+            tagline: result.tagline,
+            pocName: result.pocName,
+            email: result.email,
+          },
+          event,
+          manageLink: event.url ?? undefined,
+        });
+
         return result;
       } catch (error: any) {
         if (error.code === "P2002") {
@@ -129,11 +150,28 @@ export const submissionRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const event = await db.event.findUnique({
         where: { id: input.eventId },
+        select: { id: true, name: true, url: true, secret: true },
       });
-      if (event?.secret !== input.secret) {
+      if (!event || event.secret !== input.secret) {
         throw new Error("Unauthorized");
       }
-      return db.submission.update({
+
+      const previous = await db.submission.findUnique({
+        where: { id: input.id },
+        select: {
+          id: true,
+          name: true,
+          pocName: true,
+          email: true,
+          tagline: true,
+          status: true,
+        },
+      });
+      if (!previous) {
+        throw new Error("Submission not found");
+      }
+
+      const updated = await db.submission.update({
         where: { id: input.id },
         data: {
           status: input.status,
@@ -142,6 +180,23 @@ export const submissionRouter = createTRPCRouter({
           comment: input.comment,
         },
       });
+
+      if (
+        input.status &&
+        input.status !== previous.status &&
+        ["CONFIRMED", "REJECTED"].includes(input.status)
+      ) {
+        void sendSubmissionStatusUpdate({
+          submission: {
+            ...previous,
+            status: input.status as "CONFIRMED" | "REJECTED" | "WAITLISTED",
+          },
+          event,
+          manageLink: event.url ?? undefined,
+        });
+      }
+
+      return updated;
     }),
   setSubmissions: protectedProcedure
     .input(

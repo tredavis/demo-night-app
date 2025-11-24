@@ -31,6 +31,9 @@ yarn global add dotenv-cli
 
 For `.env` key/value pairs, see `.env.example`.
 
+- Database URLs, NextAuth secrets, Google OAuth, and Redis creds are required.
+- Add your Resend credentials (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`). For quick local testing you can set `RESEND_FROM_EMAIL=onboarding@resend.dev`; production should use a verified domain from the Resend dashboard.
+
 ### 3. Start the local DB Docker Compose service
 
 ```bash
